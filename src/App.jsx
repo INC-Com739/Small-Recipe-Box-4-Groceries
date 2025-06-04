@@ -1,78 +1,93 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { scanRecipes, createRecipe, updateRecipe as updateRecipeDb, deleteRecipe as deleteRecipeDb } from './dynamo';
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [newRecipeName, setNewRecipeName] = useState("");
+  const [Cake, setCake] = useState("");
   const [newRecipeIngredients, setNewRecipeIngredients] = useState("");
   const [recipes, setRecipes] = useState([]);
+  // Test AWS connection
+  const [awsTestResult, setAwsTestResult] = useState(null);
 
-  // input for recipe name
-  const recipeName = "Recipe Name"; // Placeholder for recipe name input
-  
-  // view all recipes
-  const viewRecipes = () => {
-    // Logic to view all recipes
-    console.log("Viewing all recipes...");
-  }
-  // delete a recipe
-  const deleteRecipe = () => {
-    // Logic to delete a recipe
-    console.log("Deleting a recipe...");
-  }
-  // update a recipe
-  const updateRecipe = () => {
-    // Logic to update a recipe
-    console.log("Updating a recipe...");
-  }
-  // search for a recipe
-  const searchRecipe = () => {
-    // Logic to search for a recipe
-    console.log("Searching for a recipe...");
-  }
-  // add a recipe
-  const handleAddRecipe = (e) => {
+  // Load recipes from DynamoDB
+  const loadRecipes = async () => {
+    const data = await scanRecipes();
+    setRecipes(data);
+  };
+
+  // Add a recipe to DynamoDB
+  const handleAddRecipe = async (e) => {
     e.preventDefault();
     const newRecipe = {
-      name: newRecipeName,
+      Cake: Cake, // Use 'Cake' as the partition key, matching your table schema
       ingredients: newRecipeIngredients.split(',').map(ing => ing.trim()),
     };
-    setRecipes([...recipes, newRecipe]);
-    setNewRecipeName('');
+    await createRecipe(newRecipe);
+    setCake('');
     setNewRecipeIngredients('');
-  }
+    loadRecipes();
+  };
+
+  // Delete a recipe from DynamoDB (delete first recipe for demo)
+  const deleteRecipe = async () => {
+    if (recipes.length === 0) return;
+    await deleteRecipeDb(recipes[0].Cake); // Use 'Cake' as the key
+    loadRecipes();
+  };
+
+  // Update a recipe in DynamoDB (update first recipe for demo)
+  const updateRecipe = async () => {
+    if (recipes.length === 0) return;
+    const updated = { ...recipes[0], Cake: recipes[0].Cake + ' (Updated)' };
+    await updateRecipeDb(updated);
+    loadRecipes();
+  };
+
+  // View all recipes (reload from DB)
+  const viewRecipes = () => {
+    loadRecipes();
+  };
+
+
+  // search for a recipe by Cake name
+  const searchRecipe = () => {
+    const searchTerm = prompt('Enter the recipe name to search for:');
+    if (!searchTerm) return;
+    const found = recipes.find(r => r.Cake.toLowerCase() === searchTerm.toLowerCase());
+    if (found) {
+      alert(`Found: ${found.Cake}\nIngredients: ${found.ingredients.join(', ')}`);
+    } else {
+      alert('Recipe not found.');
+    }
+  };
+
+  // Load recipes on mount
+  useEffect(() => {
+    loadRecipes();
+  }, []);
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
       <title>Recipe Book</title>
       <div className="card">
         <h1>Recipe Book</h1>
-        <form onSubmit={handleAddRecipe} style={{marginBottom: '10px'}}>
+        <form onSubmit={handleAddRecipe} style={{marginBottom: '10px', textAlign: 'center', padding: '10px', borderRadius: '5px'}}>
           <input
             type="text"
             placeholder="Enter recipe name..."
-            value={newRecipeName}
-            onChange={e => setNewRecipeName(e.target.value)}
+            value={Cake}
+            onChange={e => setCake(e.target.value)}
             style={{marginBottom: '5px', padding: '5px', width: '80%'}}
-            required
-          />
-          <br />
+            required/>
+          <br/>
           <textarea
             placeholder="Enter ingredients (comma separated)..."
             value={newRecipeIngredients}
             onChange={e => setNewRecipeIngredients(e.target.value)}
-            style={{marginBottom: '5px', padding: '5px', width: '80%'}}
+            style={{marginBottom: '5px', padding: '5px', width: '80%', height: '60px'}}
             required
           />
           <br />
@@ -84,7 +99,7 @@ function App() {
             <ul>
               {recipes.map((recipe, idx) => (
                 <li key={idx} style={{marginBottom: '8px'}}>
-                  <strong>{recipe.name}</strong>: {recipe.ingredients.join(', ')}
+                  <strong>{recipe.Cake}</strong>: {recipe.ingredients.join(', ')}
                 </li>
               ))}
             </ul>
