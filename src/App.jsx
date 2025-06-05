@@ -35,7 +35,7 @@ function App() {
   const deleteRecipe = async () => {
     if (recipes.length === 0) return;
     await deleteRecipeDb(recipes[0].Cake); // Use 'Cake' as the key
-    loadRecipes();
+    await loadRecipes();
   };
 
   // Update a recipe in DynamoDB (update first recipe for demo)
@@ -51,17 +51,26 @@ function App() {
     loadRecipes();
   };
 
-
-  // search for a recipe by Cake name
-  const searchRecipe = () => {
+// search for a recipe by Cake name
+  const searchRecipe = async () => {
     const searchTerm = prompt('Enter the recipe name to search for:');
     if (!searchTerm) return;
+    await loadRecipes(); // Ensure recipes are reloaded from DB
     const found = recipes.find(r => r.Cake.toLowerCase() === searchTerm.toLowerCase());
     if (found) {
       alert(`Found: ${found.Cake}\nIngredients: ${found.ingredients.join(', ')}`);
     } else {
       alert('Recipe not found.');
     }
+  };
+
+  // Save a recipe to DynamoDB (re-save/overwrite)
+  const saveRecipe = async (recipe) => {
+    await createRecipe(recipe);
+    await loadRecipes(); // Ensure recipes are reloaded after saving
+    // Remove alert, and instead show a temporary message in the UI
+    setAwsTestResult(`Recipe '${recipe.Cake}' saved!`);
+    setTimeout(() => setAwsTestResult(null), 2000);
   };
 
   // Load recipes on mount
@@ -100,15 +109,16 @@ function App() {
               {recipes.map((recipe, idx) => (
                 <li key={idx} style={{marginBottom: '8px'}}>
                   <strong>{recipe.Cake}</strong>: {recipe.ingredients.join(', ')}
+                  <button style={{marginLeft: '10px'}} onClick={() => saveRecipe(recipe)}>Save</button>
                 </li>
               ))}
             </ul>
           </div>
         )}
-        <button onClick={viewRecipes}>View Recipes</button>
         <button onClick={deleteRecipe}>Delete Recipe</button>
         <button onClick={updateRecipe}>Update Recipe</button>
         <button onClick={searchRecipe}>Search Recipe</button>
+        {awsTestResult && <div style={{color: 'green', marginTop: '10px'}}>{awsTestResult}</div>}
         <p>
           Click on the buttons to manage your recipes.
         </p>
