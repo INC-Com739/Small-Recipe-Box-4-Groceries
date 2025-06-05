@@ -1,130 +1,102 @@
 import { useState, useEffect } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { scanRecipes, createRecipe, updateRecipe as updateRecipeDb, deleteRecipe as deleteRecipeDb } from './dynamo';
 
 function App() {
-  const [Cake, setCake] = useState("");
-  const [newRecipeIngredients, setNewRecipeIngredients] = useState("");
+  const [recipeName, setRecipeName] = useState("");
+  const [ingredients, setIngredients] = useState("");
   const [recipes, setRecipes] = useState([]);
-  // Test AWS connection
-  const [awsTestResult, setAwsTestResult] = useState(null);
+  const [message, setMessage] = useState(null);
 
   // Load recipes from DynamoDB
-  const loadRecipes = async () => {
-    const data = await scanRecipes();
-    setRecipes(data);
+  const loadRecipes = async () => setRecipes(await scanRecipes());
+
+  // Add or save a recipe
+  const saveRecipe = async (recipe) => {
+    await createRecipe(recipe || {
+      Cake: recipeName,
+      ingredients: ingredients.split(',').map(i => i.trim()),
+    });
+    setRecipeName("");
+    setIngredients("");
+    setMessage("Recipe saved!");
+    await loadRecipes();
+    setTimeout(() => setMessage(null), 2000);
   };
 
-  // Add a recipe to DynamoDB
-  const handleAddRecipe = async (e) => {
-    e.preventDefault();
-    const newRecipe = {
-      Cake: Cake, // Use 'Cake' as the partition key, matching your table schema
-      ingredients: newRecipeIngredients.split(',').map(ing => ing.trim()),
-    };
-    await createRecipe(newRecipe);
-    setCake('');
-    setNewRecipeIngredients('');
-    loadRecipes();
-  };
-
-  // Delete a recipe from DynamoDB (delete first recipe for demo)
+  // Delete first recipe (for demo)
   const deleteRecipe = async () => {
-    if (recipes.length === 0) return;
-    await deleteRecipeDb(recipes[0].Cake); // Use 'Cake' as the key
+    if (!recipes.length) return;
+    await deleteRecipeDb(recipes[0].Cake);
     await loadRecipes();
   };
 
-  // Update a recipe in DynamoDB (update first recipe for demo)
+  // Update first recipe (for demo)
   const updateRecipe = async () => {
-    if (recipes.length === 0) return;
+    if (!recipes.length) return;
     const updated = { ...recipes[0], Cake: recipes[0].Cake + ' (Updated)' };
     await updateRecipeDb(updated);
-    loadRecipes();
+    await loadRecipes();
   };
 
-  // View all recipes (reload from DB)
-  const viewRecipes = () => {
-    loadRecipes();
-  };
-
-// search for a recipe by Cake name
+  // Search for a recipe
   const searchRecipe = async () => {
     const searchTerm = prompt('Enter the recipe name to search for:');
     if (!searchTerm) return;
-    await loadRecipes(); // Ensure recipes are reloaded from DB
+    await loadRecipes();
     const found = recipes.find(r => r.Cake.toLowerCase() === searchTerm.toLowerCase());
-    if (found) {
-      alert(`Found: ${found.Cake}\nIngredients: ${found.ingredients.join(', ')}`);
-    } else {
-      alert('Recipe not found.');
-    }
+    alert(found ? `Found: ${found.Cake}\nIngredients: ${found.ingredients.join(', ')}` : 'Recipe not found.');
   };
 
-  // Save a recipe to DynamoDB (re-save/overwrite)
-  const saveRecipe = async (recipe) => {
-    await createRecipe(recipe);
-    await loadRecipes(); // Ensure recipes are reloaded after saving
-    // Remove alert, and instead show a temporary message in the UI
-    setAwsTestResult(`Recipe '${recipe.Cake}' saved!`);
-    setTimeout(() => setAwsTestResult(null), 2000);
-  };
-
-  // Load recipes on mount
-  useEffect(() => {
-    loadRecipes();
-  }, []);
+  useEffect(() => { loadRecipes(); }, []);
 
   return (
     <>
       <title>Recipe Book</title>
       <div className="card">
         <h1>Recipe Book</h1>
-        <form onSubmit={handleAddRecipe} style={{marginBottom: '10px', textAlign: 'center', padding: '10px', borderRadius: '5px'}}>
+        <form onSubmit={e => { e.preventDefault(); saveRecipe(); }} className="mb-3 text-center p-2 rounded">
           <input
             type="text"
             placeholder="Enter recipe name..."
-            value={Cake}
-            onChange={e => setCake(e.target.value)}
-            style={{marginBottom: '5px', padding: '5px', width: '80%'}}
-            required/>
-          <br/>
-          <textarea
-            placeholder="Enter ingredients (comma separated)..."
-            value={newRecipeIngredients}
-            onChange={e => setNewRecipeIngredients(e.target.value)}
-            style={{marginBottom: '5px', padding: '5px', width: '80%', height: '60px'}}
+            value={recipeName}
+            onChange={e => setRecipeName(e.target.value)}
+            className="form-control mb-2"
             required
           />
-          <br />
-          <button type="submit">Add Recipe</button>
+          <textarea
+            placeholder="Enter ingredients (comma separated)..."
+            value={ingredients}
+            onChange={e => setIngredients(e.target.value)}
+            className="form-control mb-2"
+            required
+          />
+          <button type="submit" className="btn btn-primary">Add Recipe</button>
         </form>
         {recipes.length > 0 && (
-          <div style={{marginBottom: '10px', textAlign: 'left'}}>
+          <div className="mb-3 text-left">
             <h2>Recipes</h2>
-            <ul>
+            <ul className="list-group">
               {recipes.map((recipe, idx) => (
-                <li key={idx} style={{marginBottom: '8px'}}>
-                  <strong>{recipe.Cake}</strong>: {recipe.ingredients.join(', ')}
-                  <button style={{marginLeft: '10px'}} onClick={() => saveRecipe(recipe)}>Save</button>
+                <li key={idx} className="list-group-item d-flex justify-content-between align-items-center">
+                  <span><strong>{recipe.Cake}</strong>: {recipe.ingredients.join(', ')}</span>
+                  <button className="btn btn-success btn-sm" onClick={() => saveRecipe(recipe)}>Save</button>
                 </li>
               ))}
             </ul>
           </div>
         )}
-        <button onClick={deleteRecipe}>Delete Recipe</button>
-        <button onClick={updateRecipe}>Update Recipe</button>
-        <button onClick={searchRecipe}>Search Recipe</button>
-        {awsTestResult && <div style={{color: 'green', marginTop: '10px'}}>{awsTestResult}</div>}
-        <p>
+        <button onClick={deleteRecipe} className="btn btn-danger me-2">Delete Recipe</button>
+        <button onClick={updateRecipe} className="btn btn-warning me-2">Update Recipe</button>
+        <button onClick={searchRecipe} className="btn btn-info">Search Recipe</button>
+        {message && <div style={{color: 'green', marginTop: '10px'}}>{message}</div>}
+        <p className="mt-3">
           Click on the buttons to manage your recipes.
         </p>
       </div>
     </>
-  )
+  );
 }
 
 export default App
