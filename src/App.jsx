@@ -8,6 +8,11 @@ function App() {
   const [ingredients, setIngredients] = useState("");
   const [recipes, setRecipes] = useState([]);
   const [message, setMessage] = useState(null);
+  const [modal, setModal] = useState({ show: false, title: '', body: '', onConfirm: null });
+  // Update a recipe in DynamoDB (update by clicking an Edit button next to each recipe)
+  const [editIdx, setEditIdx] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editIngredients, setEditIngredients] = useState("");
 
   // Load recipes from DynamoDB
   const loadRecipes = async () => setRecipes(await scanRecipes());
@@ -40,13 +45,62 @@ function App() {
     await loadRecipes();
   };
 
-  // Search for a recipe
-  const searchRecipe = async () => {
-    const searchTerm = prompt('Enter the recipe name to search for:');
-    if (!searchTerm) return;
+  const searchRecipe = () => {
+    setModal({
+      show: true,
+      title: 'Search Recipe',
+      body: (
+        <div>
+          <input
+            id="searchInput"
+            className="form-control"
+            placeholder="Enter recipe name..."
+            autoFocus
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+      ),
+      onConfirm: async () => {
+        const value = document.getElementById('searchInput').value;
+        if (!value) return setModal({ show: false });
+        const found = recipes.find(r => r.Cake.toLowerCase() === value.toLowerCase());
+        setModal({
+          show: true,
+          title: 'Search Result',
+          body: found ? (
+            <div>
+              <div><strong>{found.Cake}</strong></div>
+              <div>Ingredients: {found.ingredients.join(', ')}</div>
+            </div>
+          ) : 'Recipe not found.',
+          onConfirm: () => setModal({ show: false })
+        });
+      }
+    });
+  };
+
+  const startEdit = (idx) => {
+    setEditIdx(idx);
+    setEditName(recipes[idx].Cake);
+    setEditIngredients(recipes[idx].ingredients.join(", "));
+  };
+
+  const cancelEdit = () => {
+    setEditIdx(null);
+    setEditName("");
+    setEditIngredients("");
+  };
+
+  const confirmEdit = async () => {
+    const updated = {
+      Cake: editName,
+      ingredients: editIngredients.split(',').map(i => i.trim()),
+    };
+    await updateRecipeDb(updated);
     await loadRecipes();
-    const found = recipes.find(r => r.Cake.toLowerCase() === searchTerm.toLowerCase());
-    alert(found ? `Found: ${found.Cake}\nIngredients: ${found.ingredients.join(', ')}` : 'Recipe not found.');
+    cancelEdit();
+    setMessage("Recipe updated!");
+    setTimeout(() => setMessage(null), 2000);
   };
 
   useEffect(() => { loadRecipes(); }, []);
@@ -80,8 +134,33 @@ function App() {
             <ul className="list-group">
               {recipes.map((recipe, idx) => (
                 <li key={idx} className="list-group-item d-flex justify-content-between align-items-center">
-                  <span><strong>{recipe.Cake}</strong>: {recipe.ingredients.join(', ')}</span>
-                  <button className="btn btn-success btn-sm" onClick={() => saveRecipe(recipe)}>Save</button>
+                  {editIdx === idx ? (
+                    <span style={{width: '100%'}}>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        className="form-control mb-1"
+                        style={{maxWidth: 200, display: 'inline-block'}}
+                      />
+                      <textarea
+                        value={editIngredients}
+                        onChange={e => setEditIngredients(e.target.value)}
+                        className="form-control mb-1"
+                        style={{maxWidth: 300, display: 'inline-block'}}
+                      />
+                      <button className="btn btn-success btn-sm me-1" onClick={confirmEdit}>Save</button>
+                      <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>Cancel</button>
+                    </span>
+                  ) : (
+                    <>
+                      <span><strong>{recipe.Cake}</strong>: {recipe.ingredients.join(', ')}</span>
+                      <span>
+                        <button className="btn btn-warning btn-sm me-1" onClick={() => startEdit(idx)}>Edit</button>
+                        <button className="btn btn-success btn-sm" onClick={() => saveRecipe(recipe)}>Save</button>
+                      </span>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -95,6 +174,24 @@ function App() {
           Click on the buttons to manage your recipes.
         </p>
       </div>
+      {modal.show && (
+        <div className="modal show d-block" tabIndex="-1" style={{background: 'rgba(0,0,0,0.5)'}}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{modal.title}</h5>
+                <button type="button" className="btn-close" onClick={() => setModal({ show: false })}></button>
+              </div>
+              <div className="modal-body">
+                {typeof modal.body === 'string' ? <pre>{modal.body}</pre> : modal.body}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-primary" onClick={modal.onConfirm}>OK</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
