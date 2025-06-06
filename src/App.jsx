@@ -167,7 +167,6 @@ function App() {
           </div>
         )}
         <button onClick={deleteRecipe} className="btn btn-danger me-2">Delete Recipe</button>
-        <button onClick={updateRecipe} className="btn btn-warning me-2">Update Recipe</button>
         <button onClick={searchRecipe} className="btn btn-info">Search Recipe</button>
         {message && <div style={{color: 'green', marginTop: '10px'}}>{message}</div>}
         <p className="mt-3">
