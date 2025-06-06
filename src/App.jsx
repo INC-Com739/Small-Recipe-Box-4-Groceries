@@ -46,6 +46,7 @@ function App() {
   };
 
   const searchRecipe = () => {
+    let searchTerm = "";
     setModal({
       show: true,
       title: 'Search Recipe',
@@ -56,12 +57,12 @@ function App() {
             className="form-control"
             placeholder="Enter recipe name..."
             autoFocus
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => { searchTerm = e.target.value; }}
           />
         </div>
       ),
       onConfirm: async () => {
-        const value = document.getElementById('searchInput').value;
+        const value = document.getElementById('searchInput').value || searchTerm;
         if (!value) return setModal({ show: false });
         const found = recipes.find(r => r.Cake.toLowerCase() === value.toLowerCase());
         setModal({
