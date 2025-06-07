@@ -1,3 +1,9 @@
 {
-  "include": ["src", "./setupTest.ts"]
+  "compilerOptions": {
+    // ...existing code...
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-jsx",
+    "target": "ES2015",
+    "lib": ["DOM", "ES2015"]
+  }
 }

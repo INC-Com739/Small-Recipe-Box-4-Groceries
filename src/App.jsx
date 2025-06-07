@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { scanRecipes, createRecipe, updateRecipe as updateRecipeDb, deleteRecipe as deleteRecipeDb } from './dynamo';
-
+import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
+import { scanRecipes, createRecipe, updateRecipe as updateRecipeDb, deleteRecipe as deleteRecipeDb } from
+'./dynamo.js'; 
 function App() {
   const [recipeName, setRecipeName] = useState("");
   const [ingredients, setIngredients] = useState("");
