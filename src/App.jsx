@@ -150,7 +150,6 @@ function App() {
                         className="form-control mb-1"
                         style={{maxWidth: 300, display: 'inline-block'}}
                       />
-                      <button className="btn btn-success btn-sm me-1" onClick={confirmEdit}>Save</button>
                       <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>Cancel</button>
                     </span>
                   ) : (
