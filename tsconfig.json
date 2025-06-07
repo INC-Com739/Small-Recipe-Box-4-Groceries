@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     // ...existing code...
+    "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "jsx": "react-jsx",
     "target": "ES2015",
